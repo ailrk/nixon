@@ -97,7 +97,7 @@ menuMaintenance = menuLoop "Maintenance & garbage collection"
       o <- Gum.spin "Measuring /nix/store…" (capture ["du", "-sh", "/nix/store"])
       TIO.putStr (fromMaybe "(du failed)\n" o)
       pause
-  , opt "GC dry run" $ pagedCmd ["nix-collect-garbage", "--dry-run"]
+  , opt "GC dry run" $ pagedCmd ["nix-collect-garbage", "--dry-run"] >> pause
   , opt "Garbage collect" $ do
       c <- confirm "Delete unreachable store paths?"
       when c (runCmd ["nix-collect-garbage"] >> pause)
