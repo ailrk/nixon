@@ -1,0 +1,41 @@
+cabal-version:      3.0
+name:               nixon
+version:            1.0.0
+synopsis:           A TUI/CLI front-end for Nix
+build-type:         Simple
+
+executable nixon
+  main-is:          Main.hs
+  hs-source-dirs:   app
+  default-language: GHC2021
+  ghc-options:      -Wall -Wno-name-shadowing -Wno-unused-do-bind -Wno-incomplete-uni-patterns -threaded
+  other-modules:
+    Nixon.Core
+    Nixon.Json
+    Nixon.Nix
+    Nixon.Cli
+    Nixon.Menu
+    Nixon.Menu.Packages
+    Nixon.Menu.Profile
+    Nixon.Menu.Options
+    Nixon.Menu.Inspect
+    Nixon.Menu.System
+    Nixon.Menu.Flake
+    Nixon.Menu.Admin
+  build-depends:
+    , aeson >=2.0
+    , aeson-pretty
+    , base >=4.16 && <5
+    , bytestring
+    , containers
+    , directory >=1.3.7
+    , filepath
+    , gum-brick
+    , process
+    , temporary
+    , text
+    , time
+    , transformers
+    , unix
+  other-modules:
+      Paths_nixon

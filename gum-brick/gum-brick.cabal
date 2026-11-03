@@ -1,0 +1,33 @@
+cabal-version:      3.0
+name:               gum-brick
+version:            0.1.0.0
+synopsis:           gum-style prompts on Brick plus an fzf bridge
+build-type:         Simple
+
+library
+  hs-source-dirs:   src
+  default-language: GHC2021
+  ghc-options:      -Wall -Wno-name-shadowing -Wno-unused-do-bind
+  exposed-modules:
+    Gum
+    Gum.Style
+    Gum.List
+    Gum.Prompt
+    Gum.Pager
+    Gum.Spin
+    Gum.Fzf
+    Gum.Pick
+  other-modules:
+    Gum.Internal
+  build-depends:
+    , ansi-terminal      >=1.0
+    , base               >=4.16 && <5
+    , brick              >=2.3  && <3
+    , directory
+    , filepath
+    , mtl
+    , process
+    , temporary
+    , text
+    , vty                >=6.1
+    , vty-crossplatform  >=0.4
