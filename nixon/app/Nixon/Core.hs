@@ -287,24 +287,65 @@ optLeave :: Text -> IO () -> (Text, IO Next)
 optLeave l a = (l, a >> pure Leave)
 
 -- | Generates the raw text lines for a rounded box, styled with cyan borders and white text.
+-- banner :: Text -> Text -> Text
+-- banner title ch = T.unlines $ build . filter (not . T.null) $
+--   [ "❄ NIXON " <> version
+--   , "channel: " <> ch
+--   , title
+--   ]
+--   where
+--     build ls =
+--       let w = maximum (1 : map T.length ls)
+--           row l =
+--             let padded = T.justifyLeft w ' ' l
+--                 styled = if "❄ NIXON" `T.isPrefixOf` l
+--                          then cyan <> "❄ NIXON " <> reset <> version
+--                          else boldWhite <> padded
+--              in cyan <> "│ " <> reset <> styled <> cyan <> " │" <> reset
+--        in mconcat
+--             [ [ cyan <> "╭" <> T.replicate (w + 2) "─" <> "╮" <> reset ]
+--             , map row ls
+--             , [ cyan <> "╰" <> T.replicate (w + 2) "─" <> "╯" <> reset ]
+--             ]
+--     cyan = "\ESC[36m"
+--     boldWhite = "\ESC[1;37m"
+--     reset = "\ESC[0m"
+
+
 banner :: Text -> Text -> Text
-banner title ch = T.unlines $ build . filter (not . T.null) $
-  [ "❄ NIXON " <> version
-  , "channel: " <> ch
-  , title
-  ]
+banner title ch = T.unlines $ build
   where
-    build ls =
-      let w = maximum (1 : map T.length ls)
-          row l = cyan <> "│ " <> boldWhite <> T.justifyLeft w ' ' l <> cyan <> " │" <> reset
+    rawNixon = "❄ NIXON " <> version
+    rawChan  = "channel: " <> ch
+    rawTitle = title
+
+    cleanLines = filter (not . T.null) [rawNixon, rawChan, rawTitle]
+    w = maximum (1 : map T.length cleanLines)
+
+    renderLine l
+      | "❄ NIXON" `T.isPrefixOf` l =
+          let padded = T.justifyLeft w ' ' l
+              (prefix, rest) = T.splitAt 8 padded
+          in cyan <> prefix <> reset <> rest
+      | "channel:" `T.isPrefixOf` l =
+          let padded = T.justifyLeft w ' ' l
+              (prefix, rest) = T.splitAt 9 padded
+          in boldWhite <> prefix <> reset <> rest
+      | otherwise =
+          boldWhite <> T.justifyLeft w ' ' l <> reset
+
+    build =
+      let rows = map renderLine cleanLines
        in mconcat
             [ [ cyan <> "╭" <> T.replicate (w + 2) "─" <> "╮" <> reset ]
-            , map row ls
+            , map (\r -> cyan <> "│ " <> reset <> r <> cyan <> " │" <> reset) rows
             , [ cyan <> "╰" <> T.replicate (w + 2) "─" <> "╯" <> reset ]
             ]
+
     cyan = "\ESC[36m"
     boldWhite = "\ESC[1;37m"
     reset = "\ESC[0m"
+
 
 menuLoopWith :: Text -> Text -> [(Text, IO Next)] -> IO ()
 menuLoopWith back hdr acts = go

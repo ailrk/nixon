@@ -15,6 +15,7 @@ import Nixon.Nix
 import System.Directory
 import System.FilePath
 import Text.Read (readMaybe)
+import Nixon.Json (pretty, parse)
 
 -- generations & diffs ------------------------------------------------------------
 
@@ -145,7 +146,9 @@ menuDerivation = do
   forM_ mr $ \r -> do
     out <- capture ["nix", "derivation", "show", T.unpack r]
     out' <- maybe (captureAll ["nix", "show-derivation", T.unpack r]) pure out
-    Gum.pager out'
+    case parse out' of
+      Nothing -> Gum.pager out'
+      Just val -> Gum.pager (pretty val)
 
 menuBuildDebug :: IO ()
 menuBuildDebug = do
