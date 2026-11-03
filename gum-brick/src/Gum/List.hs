@@ -2,9 +2,8 @@
 -- | Meant for small lists (menus, a few hundred entries).  For big lists use
 -- "Gum.Pick", which hands the work to fzf when available.
 module Gum.List
-  ( ListCfg (..), defaultList, runList
-  , choose, chooseMany, filterOne, filterMany, filterFree
-  ) where
+  ( ListCfg (..), defaultList, runList , chooseAt, choose, chooseMany, filterOne, filterMany, filterFree )
+    where
 
 import Brick
 import Data.Maybe (listToMaybe)
@@ -21,10 +20,11 @@ data ListCfg = ListCfg
   , lcFilter      :: Bool         -- ^ type-to-filter line
   , lcFree        :: Bool         -- ^ Enter with no match returns the typed text (gum's --no-strict)
   , lcPlaceholder :: Text
+  , lcStart       :: Int          -- ^ initially highlighted row
   }
 
 defaultList :: ListCfg
-defaultList = ListCfg "" 12 False Nothing False False "filter…"
+defaultList = ListCfg "" 12 False Nothing False False "filter…" 0
 
 data St = St
   { sCfg   :: ListCfg
@@ -38,8 +38,10 @@ data St = St
 
 -- | Run the list. 'Nothing' means the user cancelled.
 runList :: ListCfg -> [Text] -> IO (Maybe [Text])
-runList cfg xs = sRes <$> defaultMain app (St cfg (zip [0 ..] xs) "" 0 0 [] Nothing)
+runList cfg xs = sRes <$> defaultMain app (St cfg (zip [0 ..] xs) "" cur off [] Nothing)
   where
+    cur = max 0 (min (length xs - 1) (lcStart cfg))
+    off = max 0 (cur - lcHeight cfg + 1)     -- scroll so the row is visible
     app = App
       { appDraw         = draw
       , appChooseCursor = neverShowCursor
@@ -156,8 +158,13 @@ draw s = [ padLeftRight 1 (vBox (hdr ++ qline ++ body ++ [foot])) ]
 clampH :: Int -> [a] -> Int
 clampH m xs = max 1 (min m (length xs))
 
+chooseAt :: Int -> Text -> [Text] -> IO (Maybe Text)
+chooseAt i hdr xs =
+  (>>= listToMaybe) <$> runList defaultList
+    { lcHeader = hdr, lcHeight = clampH 14 xs, lcStart = i } xs
+
 choose :: Text -> [Text] -> IO (Maybe Text)
-choose hdr xs = (>>= listToMaybe) <$> runList defaultList { lcHeader = hdr, lcHeight = clampH 14 xs } xs
+choose = chooseAt 0
 
 chooseMany :: Maybe Int -> Text -> [Text] -> IO (Maybe [Text])
 chooseMany lim hdr xs =

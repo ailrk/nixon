@@ -113,10 +113,10 @@ menuLocate = do
 
 menuPackages :: IO ()
 menuPackages = menuLoop "Packages"
-  [ optLeave "Search nixpkgs" (searchPackages >>= mapM_ packageActions)
-  , optLeave "Find a package by file (nix-locate)" menuLocate
-  , optLeave "Find an older version (nixhub)" (oldVersionPick "" >>= mapM_ (packageActions . pure))
-  , optLeave "Update the file index" (void locateUpdate >> pause)
+  [ opt "Search nixpkgs" (searchPackages >>= mapM_ packageActions)
+  , opt "Find a package by file (nix-locate)" menuLocate
+  , opt "Find an older version (nixhub)" (oldVersionPick "" >>= mapM_ (packageActions . pure))
+  , opt "Update the file index" (void locateUpdate >> pause)
   ]
 
 menuHistory :: IO ()

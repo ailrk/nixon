@@ -6,6 +6,7 @@ import Control.Exception
 import Control.Monad
 import Data.IORef
 import Data.Maybe
+import Data.List (elemIndex)
 import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
@@ -22,6 +23,9 @@ import System.Posix.User (getEffectiveUserID)
 import System.Process
 import Data.Version (showVersion)
 import qualified Paths_nixon
+
+-- Remember the cursor position at each level of the menu
+type CursorPos = [Int]
 
 version :: Text
 version = T.pack (showVersion Paths_nixon.version)
@@ -287,31 +291,6 @@ optLeave :: Text -> IO () -> (Text, IO Next)
 optLeave l a = (l, a >> pure Leave)
 
 -- | Generates the raw text lines for a rounded box, styled with cyan borders and white text.
--- banner :: Text -> Text -> Text
--- banner title ch = T.unlines $ build . filter (not . T.null) $
---   [ "❄ NIXON " <> version
---   , "channel: " <> ch
---   , title
---   ]
---   where
---     build ls =
---       let w = maximum (1 : map T.length ls)
---           row l =
---             let padded = T.justifyLeft w ' ' l
---                 styled = if "❄ NIXON" `T.isPrefixOf` l
---                          then cyan <> "❄ NIXON " <> reset <> version
---                          else boldWhite <> padded
---              in cyan <> "│ " <> reset <> styled <> cyan <> " │" <> reset
---        in mconcat
---             [ [ cyan <> "╭" <> T.replicate (w + 2) "─" <> "╮" <> reset ]
---             , map row ls
---             , [ cyan <> "╰" <> T.replicate (w + 2) "─" <> "╯" <> reset ]
---             ]
---     cyan = "\ESC[36m"
---     boldWhite = "\ESC[1;37m"
---     reset = "\ESC[0m"
-
-
 banner :: Text -> Text -> Text
 banner title ch = T.unlines $ build
   where
@@ -346,19 +325,19 @@ banner title ch = T.unlines $ build
     boldWhite = "\ESC[1;37m"
     reset = "\ESC[0m"
 
-
 menuLoopWith :: Text -> Text -> [(Text, IO Next)] -> IO ()
-menuLoopWith back hdr acts = go
+menuLoopWith back hdr acts = go 0
   where
-    go = do
-      r <- Gum.choose hdr (map fst acts ++ [back])
+    go i = do
+      r <- Gum.chooseAt i hdr opts
       case r of
         Just l | l /= back, Just a <- lookup l acts -> do
           n <- a
           case n of
-            Stay  -> go
+            Stay -> go (fromMaybe 0 (elemIndex l opts))  -- save the row position
             Leave -> pure ()
         _ -> pure ()
+    opts = map fst acts ++ [back]
 
 menuLoop :: Text -> [(Text, IO Next)] -> IO ()
 menuLoop title acts = do
