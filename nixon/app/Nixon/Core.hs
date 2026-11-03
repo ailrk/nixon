@@ -60,7 +60,7 @@ initState = do
   cd <- cacheDir
   createDirectoryIfMissing True sd
   createDirectoryIfMissing True cd
-  forM_ ["history", "favorites"] $ \f -> do
+  forM_ ["history"] $ \f -> do
     p <- stateFile f
     ex <- doesFileExist p
     unless ex (TIO.writeFile p "")
@@ -297,10 +297,8 @@ banner title ch = T.unlines $ build
     rawNixon = "❄ NIXON " <> version
     rawChan  = "channel: " <> ch
     rawTitle = title
-
     cleanLines = filter (not . T.null) [rawNixon, rawChan, rawTitle]
     w = maximum (1 : map T.length cleanLines)
-
     renderLine l
       | "❄ NIXON" `T.isPrefixOf` l =
           let padded = T.justifyLeft w ' ' l
@@ -312,7 +310,6 @@ banner title ch = T.unlines $ build
           in boldWhite <> prefix <> reset <> rest
       | otherwise =
           boldWhite <> T.justifyLeft w ' ' l <> reset
-
     build =
       let rows = map renderLine cleanLines
        in mconcat
@@ -320,7 +317,6 @@ banner title ch = T.unlines $ build
             , map (\r -> cyan <> "│ " <> reset <> r <> cyan <> " │" <> reset) rows
             , [ cyan <> "╰" <> T.replicate (w + 2) "─" <> "╯" <> reset ]
             ]
-
     cyan = "\ESC[36m"
     boldWhite = "\ESC[1;37m"
     reset = "\ESC[0m"

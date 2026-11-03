@@ -17,17 +17,17 @@ isMac = os == "darwin"
 menu :: IO ()
 menu = do
   menuLoop "" $ mconcat
-        [ [ opt "Flake" $ Menu.Flake.menuFlake
-          , opt "Profile" $ Menu.Profile.menuProfile
-          , opt "Packages" $ Menu.Packages.menuPackages
-          , opt "Inspect" $ Menu.Inspect.menuInspect
-          , opt "Channels" $ Menu.Admin.menuChannels
-          , opt "Caches" $ Menu.Admin.menuCaches
-          , opt "Maintenance" $ Menu.Admin.menuMaintenance
-          , opt "Options" $ Menu.Options.menuOptions
-          , opt "History" $ Menu.Packages.menuHistory
-          , opt "NixOS" $ Menu.System.menuNixos
-          , opt "Home Mananger" $ Menu.System.menuHomeManager
-          ]
-          , if isMac then [ opt "Darwin" $ Menu.System.menuDarwin ] else []
-        ]
+    [ [ opt "Flake" $ Menu.Flake.menuFlake
+      , opt "Profile" $ Menu.Profile.menuProfile
+      , opt "Packages" $ Menu.Packages.menuPackages
+      , opt "Inspect" $ Menu.Inspect.menuInspect
+      , opt "Channels" $ Menu.Admin.menuChannels
+      , opt "Caches" $ Menu.Admin.menuCaches
+      , opt "Maintenance" $ Menu.Admin.menuMaintenance
+      , opt "Options" $ Menu.Options.menuOptions
+      , opt "History" $ Menu.Packages.menuHistory
+      , opt "NixOS" $ Menu.System.menuNixos
+      , opt "Home Mananger" $ Menu.System.menuHomeManager
+      ]
+      , if isMac then [ opt "Darwin" $ Menu.System.menuDarwin ] else []
+    ]
