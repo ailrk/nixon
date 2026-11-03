@@ -38,12 +38,14 @@ pager t = case T.lines t of
       (V.KChar 'k', [])        -> vScrollBy vp (-1)
       (V.KUp, _)               -> vScrollBy vp (-1)
       (V.KChar ' ', [])        -> vScrollPage vp Down
-      (V.KPageDown, _)         -> vScrollPage vp Down
       (V.KChar 'b', [])        -> vScrollPage vp Up
+      (V.KPageDown, _)         -> vScrollPage vp Down
       (V.KPageUp, _)           -> vScrollPage vp Up
+      (V.KChar 'u', [V.MCtrl]) -> vScrollPage vp Up
+      (V.KChar 'd', [V.MCtrl]) -> vScrollPage vp Down
       (V.KChar 'g', [])        -> vScrollToBeginning vp
-      (V.KHome, _)             -> vScrollToBeginning vp
       (V.KChar 'G', _)         -> vScrollToEnd vp
+      (V.KHome, _)             -> vScrollToBeginning vp
       (V.KEnd, _)              -> vScrollToEnd vp
       _                        -> pure ()
     handle _ = pure ()

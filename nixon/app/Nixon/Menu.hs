@@ -17,8 +17,8 @@ isMac = os == "darwin"
 menu :: IO ()
 menu = do
   menuLoop "" $ mconcat
-        [ [ opt "Profile" $ Menu.Profile.menuProfile
-          , opt "Flake" $ Menu.Flake.menuFlake
+        [ [ opt "Flake" $ Menu.Flake.menuFlake
+          , opt "Profile" $ Menu.Profile.menuProfile
           , opt "Packages" $ Menu.Packages.menuPackages
           , opt "Inspect" $ Menu.Inspect.menuInspect
           , opt "Channels" $ Menu.Admin.menuChannels

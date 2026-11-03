@@ -102,21 +102,22 @@ handle (VtyEvent (V.EvKey k ms)) = do
     (V.KEnter, _)              -> submit
     (V.KChar 'g', [])          -> move (-1000000)
     (V.KChar 'G', _)           -> move 1000000
+    (V.KHome, _)               -> move (-1000000)
+    (V.KEnd, _)                -> move 1000000
     (V.KUp, _)                 -> move (-1)
     (V.KDown, _)               -> move 1
     (V.KChar 'p', [V.MCtrl])   -> move (-1)
     (V.KChar 'n', [V.MCtrl])   -> move 1
-    (V.KPageUp, _)             -> move (negate h)
-    (V.KPageDown, _)           -> move h
-    (V.KHome, _)               -> move (-1000000)
-    (V.KEnd, _)                -> move 1000000
+    (V.KPageUp, _)             -> move (negate (h `div` 2))
+    (V.KPageDown, _)           -> move (h `div` 2)
+    (V.KChar 'u', [V.MCtrl])   -> move (negate (h `div` 2))
+    (V.KChar 'd', [V.MCtrl])   -> move (h `div` 2)
     (V.KChar '\t', _)        | multi  -> toggle >> move 1
     (V.KChar ' ', [])        | multi && not filt -> toggle
     (V.KChar 'j', [])        | not filt -> move 1
     (V.KChar 'k', [])        | not filt -> move (-1)
     (V.KChar 'q', [])        | not filt -> halt
     (V.KBS, _)               | filt -> setQuery (T.dropEnd 1 (sQuery s))
-    (V.KChar 'u', [V.MCtrl]) | filt -> setQuery ""
     (V.KChar c, [])          | filt -> setQuery (sQuery s <> T.singleton c)
     _ -> pure ()
 handle _ = pure ()
@@ -148,7 +149,7 @@ draw s = [ padLeftRight 1 (vBox (hdr ++ qline ++ body ++ [foot])) ]
       in (if isCur then withAttr aSel else id) (txtS (prefix <> mark <> t))
     foot = withAttr aDim (txtS (T.pack (show (length vis)) <> "/" <> T.pack (show (length (sItems s))) <> " · " <> help))
     help | lcMulti cfg = "tab/space: toggle · enter: confirm · g/G top/bottom · esc: cancel"
-         | otherwise   = "enter: select · esc: cancel"
+         | otherwise   = "enter: select · g/G top/bottom · esc: cancel"
 
 -- wrappers ----------------------------------------------------------------
 
