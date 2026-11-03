@@ -11,7 +11,10 @@
       let
         pkgs = import nixpkgs { inherit system; };
 
-        nixonPackage = pkgs.haskellPackages.callCabal2nix "nixon" ./. {};
+        haskellPackages = pkgs.haskellPackages.extend (self: super: {
+          gum-brick = self.callCabal2nix "gum-brick" ./gum-brick {};
+          nixon = self.callCabal2nix "nixon" ./nixon {};
+        });
 
         devTools = with pkgs.haskellPackages; [
           ghc
@@ -25,10 +28,10 @@
         ];
       in
         {
-        packages.default = nixonPackage;
+        packages.default = haskellPackages.nixon;
 
         apps.default = flake-utils.lib.mkApp {
-          drv = nixonPackage;
+          drv = haskellPackages.nixon;
           exePath = "/bin/nixon";
         };
 
