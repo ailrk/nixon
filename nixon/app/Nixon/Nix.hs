@@ -27,12 +27,45 @@ import Text.Read (readMaybe)
 curSystem :: Text
 curSystem = T.pack (arch <> "-" <> os)
 
+-- | Locked revision of a flake ref (falls back to narHash).
+channelRev :: Text -> IO (Maybe Text)
+channelRev fl = do
+  m <- capture ["nix", "flake", "metadata", "--json", T.unpack fl]
+  pure (m >>= parse >>= \j -> (at ["locked", "rev"] j <|> at ["locked", "narHash"] j) >>= strOf)
+
+
 -- package search ------------------------------------------------------------
 
 data Pkg = Pkg { pkAttr, pkVersion, pkDesc, pkPname :: Text }
 
+-- | Every package for the current channel revision, sorted by attr.
+-- Uses the cached index; falls back to a live listing if it can't be built.
+allPkgs :: IO [Pkg]
+allPkgs = do
+  mf <- pkgIndexFile
+  case mf of
+    Nothing -> searchPkgsLive []          -- empty query matches everything
+    Just f  -> do
+      rows <- T.lines <$> TIO.readFile f
+      pure (sortOn pkAttr [ Pkg a v d p | l <- rows, [a, v, p, d] <- [T.splitOn "\t" l] ])
+
+-- | Search for a nix package. Evaluate nixpkgs in the first use, then cache
+-- the result in .cache/nixon
 searchPkgs :: [Text] -> IO [Pkg]
 searchPkgs qs = do
+  pkgs <- allPkgs
+  let ql    = map T.toLower qs
+      hit p = all (`T.isInfixOf` T.toLower (T.unwords [pkAttr p, pkPname p, pkDesc p])) ql
+      rank p
+        | T.toLower (pkAttr p) `elem` ql                = 0 :: Int
+        | any (`T.isPrefixOf` T.toLower (pkAttr p)) ql  = 1
+        | any (`T.isInfixOf` T.toLower (pkAttr p)) ql   = 2
+        | otherwise                                     = 3
+  pure (sortOn (\p -> (rank p, pkAttr p)) (filter hit pkgs))
+
+-- | Slow path
+searchPkgsLive :: [Text] -> IO [Pkg]
+searchPkgsLive qs = do
   ch <- getChannel
   m <- capture (["nix", "search", T.unpack ch] ++ map T.unpack qs ++ ["--json"])
   pure $ case m >>= parse of
@@ -62,6 +95,34 @@ packageInfo p = do
       Just a@(Array _) -> T.intercalate ", " [ fromMaybe "?" (spdx x) | x <- elems a ]
       Just o@(Object _) -> fromMaybe "-" (spdx o)
       _ -> "-"
+
+-- | Compact TSV (attr, version, pname, description) of all packages for the
+-- current channel revision. Built once with a full `nix search`, then reused.
+pkgIndexFile :: IO (Maybe FilePath)
+pkgIndexFile = do
+  ch  <- getChannel
+  mrev <- channelRev ch
+  case mrev of
+    Nothing -> pure Nothing
+    Just r -> do
+      cd <- cacheDir
+      let file = cd </> ("packages-" ++ map (\c -> if isAlphaNum c then c else '_') (T.unpack r) ++ ".tsv")
+      cached <- doesFileExist file
+      if cached then pure (Just file) else do
+        dim "building the package index (first run per nixpkgs revision; cached afterwards)…"
+        m <- capture ["nix", "search", T.unpack ch, "^", "--json"]
+        case m >>= parse of
+          Nothing -> pure Nothing
+          Just v -> do
+            let clean = T.map (\c -> if c == '\n' || c == '\t' then ' ' else c)
+                s f o = clean (fromMaybe "" (key f o >>= strOf))
+                row (k, o) = T.intercalate "\t"
+                  [ T.intercalate "." (drop 2 (T.splitOn "." k)), s "version" o, s "pname" o, s "description" o ]
+                tmp = file <> ".part"
+            createDirectoryIfMissing True cd
+            TIO.writeFile tmp (T.unlines (map row (members v)))
+            renameFile tmp file
+            pure (Just file)
 
 -- store paths & closures ------------------------------------------------------------
 
@@ -271,6 +332,7 @@ findNamed root name = do
     firstJustM f (x : xs) = f x >>= maybe (firstJustM f xs) (pure . Just)
 
 -- | Path of a cached options.json for the current revision (built on first use).
+-- options are cached in ./cache/nixon/options-hm-xxx.json
 optionsJson :: OptKind -> IO (Either Text FilePath)
 optionsJson kind = do
   ch <- getChannel
@@ -278,10 +340,7 @@ optionsJson kind = do
         OptNixos -> (ch, "nixos" :: String)
         OptHm    -> ("github:nix-community/home-manager", "hm")
       fl = T.unpack flake
-  mrev <- capture ["nix", "flake", "metadata", "--json", fl]
-  let rev = do t <- mrev
-               j <- parse t
-               (at ["locked", "rev"] j <|> at ["locked", "narHash"] j) >>= strOf
+  rev <- channelRev flake
   case rev of
     Nothing -> pure (Left ("could not resolve " <> flake))
     Just r -> do
