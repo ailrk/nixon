@@ -14,7 +14,13 @@ executable nixon
     Nixon.Json
     Nixon.Nix
     Nixon.Cli
+    Nixon.Browse.Core
+    Nixon.Browse.Inspect
+    Nixon.Browse.Tree
+    Nixon.Browse.Menu.Inspect
+    Nixon.Browse.Menu.Tree
     Nixon.Menu
+    Nixon.Menu.Browse
     Nixon.Menu.Packages
     Nixon.Menu.Profile
     Nixon.Menu.Options

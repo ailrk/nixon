@@ -2,6 +2,7 @@
 module Nixon.Menu (menu) where
 
 import Nixon.Menu.Admin qualified as Menu.Admin
+import Nixon.Menu.Browse qualified as Menu.Browse
 import Nixon.Menu.Flake qualified as Menu.Flake
 import Nixon.Menu.Packages qualified as Menu.Packages
 import Nixon.Menu.System qualified as Menu.System
@@ -24,6 +25,7 @@ menu = do
       , opt "Channels" $ Menu.Admin.menuChannels
       , opt "Caches" $ Menu.Admin.menuCaches
       , opt "Maintenance" $ Menu.Admin.menuMaintenance
+      , opt "Browse" $ Menu.Browse.menuBrowse
       , opt "Options" $ Menu.Options.menuOptions
       , opt "History" $ Menu.Packages.menuHistory
       , opt "NixOS" $ Menu.System.menuNixos

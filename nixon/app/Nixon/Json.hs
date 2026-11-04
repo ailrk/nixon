@@ -2,7 +2,7 @@
 -- | Tiny aeson helpers; this is what replaces every @jq@ call in the bash script.
 module Nixon.Json
   ( Value (..)
-  , parse, key, at, strOf, intOf, members, elems, pretty
+  , parse, key, at, strOf, strsOf, intField, intOf, members, elems, pretty
   ) where
 
 import Control.Monad (foldM)
@@ -32,9 +32,16 @@ strOf :: Value -> Maybe Text
 strOf (String s) = Just s
 strOf _          = Nothing
 
+-- | All strings in a JSON array (empty if absent or not an array).
+strsOf :: Maybe Value -> [Text]
+strsOf mv = [ s | Just a <- [mv], x <- elems a, Just s <- [strOf x] ]
+
 intOf :: Value -> Maybe Integer
 intOf (Number n) = Just (truncate n)
 intOf _          = Nothing
+
+intField :: Text -> Value -> Maybe Integer
+intField k o = key k o >>= intOf
 
 -- | Object members, or array elements keyed by index (like jq's to_entries).
 members :: Value -> [(Text, Value)]
