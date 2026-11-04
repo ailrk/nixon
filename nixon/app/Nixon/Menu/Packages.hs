@@ -1,15 +1,16 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Nixon.Menu.Packages (menuPackages, menuHistory) where
 
+import Control.Exception (evaluate)
 import Control.Monad
 import Data.List (nub, sort)
 import Data.Text (Text)
-import qualified Data.Text as T
 import Gum (Item (..), bad, dim, ok, warn)
-import qualified Gum
 import Nixon.Core
 import Nixon.Nix
 import System.Directory (doesFileExist)
+import qualified Data.Text as T
+import qualified Gum
 
 pkgItem :: Pkg -> Item
 pkgItem p = Item (pkAttr p)
@@ -20,7 +21,11 @@ pkgItem p = Item (pkAttr p)
 searchPackages :: IO (Maybe [Text])
 searchPackages = do
   ch   <- getChannel
-  pkgs <- allPkgs          -- first run per revision builds the index and prints a notice
+  -- first run per revision builds the index and prints a notice
+  pkgs <- Gum.spin ("Loading packages from " <> ch <> "…") $ do
+    ps <- allPkgs
+    _  <- evaluate (foldl' (flip seq) () ps) -- force every Pkg and its fields
+    pure ps
   if null pkgs
     then warn ("could not load packages from " <> ch) >> pause >> pure Nothing
     else do

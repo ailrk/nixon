@@ -11,7 +11,7 @@ module Gum.Fzf
 
 import Control.Concurrent (forkIO)
 import Control.Exception (IOException, try)
-import Control.Monad (forM_, void)
+import Control.Monad (void, when)
 import Data.Maybe (isJust)
 import Data.Text (Text)
 import qualified Data.Text as T
@@ -23,6 +23,7 @@ import System.IO (hClose, hSetEncoding, utf8)
 import System.IO.Temp (withSystemTempDirectory)
 import System.Process
 import Text.Read (readMaybe)
+import GHC.IO.Handle (hSetBuffering, BufferMode (..))
 
 data Item = Item
   { itemKey     :: Text
@@ -56,24 +57,32 @@ flat = T.map (\c -> if c == '\t' || c == '\n' || c == '\r' then ' ' else c)
 -- means "no match".
 fzfPick :: FzfOpts -> [Item] -> IO (Maybe (Text, [Item]))
 fzfPick o items = withSystemTempDirectory "gum-fzf" $ \dir -> do
-  let indexed = zip [0 :: Int ..] items
-      hasPreview = any (isJust . itemPreview) items
-  forM_ indexed $ \(i, it) -> forM_ (itemPreview it) (TIO.writeFile (dir </> show i))
-  let args =
-        [ "--reverse", "--height=85%", "--border", "--header", T.unpack (fzHeader o)
-        , "--delimiter", "\t", "--with-nth", "2..", "--print-query", "--tiebreak=index" ]
-        ++ [ "--multi" | fzMulti o ]
-        ++ (if hasPreview
-              then [ "--preview", "cat " ++ shq dir ++ "/{1}", "--preview-window", "right,50%,wrap" ]
-              else [])
+  let indexed    = zip [0 :: Int ..] items
+      previewF   = dir </> "previews.tsv"
+      hasPreview = case items of
+                     []      -> False
+                     (it:_)  -> isJust (itemPreview it)   -- assume uniform; avoids scanning the list
+      esc = T.replace "\n" "\\n" . T.replace "\\" "\\\\"
+      previewCmd = "awk -F'\\t' -v k={1} '$1==k { gsub(/\\\\n/, \"\\n\", $2); print $2; exit }' "
+                   ++ shq previewF
+      args = [ "--reverse", "--height=85%", "--border", "--header", T.unpack (fzHeader o)
+             , "--delimiter", "\t", "--with-nth", "2..", "--print-query", "--tiebreak=index" ]
+             ++ [ "--multi" | fzMulti o ]
+             ++ (if hasPreview
+                   then [ "--preview", previewCmd, "--preview-window", "right,50%,wrap" ]
+                   else [])
       payload = T.unlines [ T.pack (show i) <> "\t" <> flat (itemLabel it) | (i, it) <- indexed ]
   (mhin, mhout, _, ph) <- createProcess (proc "fzf" args) { std_in = CreatePipe, std_out = CreatePipe }
   case (mhin, mhout) of
     (Just hin, Just hout) -> do
       hSetEncoding hin utf8
       hSetEncoding hout utf8
-      -- feed stdin from a separate thread so a big list can't block against fzf's output
+      hSetBuffering hin (BlockBuffering (Just 65536))
+      -- stream the list to fzf and write previews in parallel, both after fzf is up
       void . forkIO $ void (try @IOException (TIO.hPutStr hin payload >> hClose hin))
+      when hasPreview . void . forkIO $ void . try @IOException $
+        TIO.writeFile previewF
+          (T.unlines [ T.pack (show i) <> "\t" <> esc p | (i, it) <- indexed, Just p <- [itemPreview it] ])
       out  <- TIO.hGetContents hout
       code <- waitForProcess ph
       let (q, sel) = case T.lines out of
