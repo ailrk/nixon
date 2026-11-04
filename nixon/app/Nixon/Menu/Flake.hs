@@ -41,7 +41,7 @@ flakeLoop dir = menuLoop ("Flake: " <> T.pack dir)
   , opt "Run default" $ inDir (runCmd ["nix", "run"]) >> pause
   , opt "Check" $ inDir (runCmd ["nix", "flake", "check"]) >> pause
   , opt "Format (nix fmt)" $ inDir (runCmd ["nix", "fmt"]) >> pause
-  , opt "Show output tree" $ inDir (pagedCmd ["nix", "flake", "show"])
+  , opt "Show output tree" $ inDir (pagedCmdWith (Just "Loading output tree") ["nix", "flake", "show"])
   , opt "Update all inputs" $ inDir (runCmd ["nix", "flake", "update"]) >> pause
   , opt "Update one input" $ do
       ins <- flakeInputs dir

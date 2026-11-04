@@ -145,6 +145,19 @@ shQuote s
   | otherwise = "'" ++ concatMap (\c -> if c == '\'' then "'\\''" else [c]) s ++ "'"
   where safe c = c `elem` ("-_./=:@%+,#^" :: String) || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')
 
+-- | Show a spinner while the action runs, but only on a terminal.
+withSpinner :: Maybe Text -> IO a -> IO a
+withSpinner Nothing act    = act
+withSpinner (Just msg) act = do
+  tty <- isTTY
+  if tty then Gum.spin msg act else act
+
+-- | Default spinner text: the command, shortened.
+spinMsg :: [String] -> Text
+spinMsg argv = "Running " <> short (showCmd argv) <> "…"
+  where short t | T.length t > 60 = T.take 59 t <> "…"
+                | otherwise      = t
+
 showCmd :: [String] -> Text
 showCmd = T.pack . unwords . map shQuote
 
@@ -158,6 +171,14 @@ spawn (c : as) =
     Gum.bad (T.pack (show (e :: IOException)))
     pure (ExitFailure 127)
 
+-- | Run with some text piped to stdin.
+spawnWithInput :: [String] -> Text -> IO ExitCode
+spawnWithInput [] _ = pure ExitSuccess
+spawnWithInput (c : as) input = do
+  (mh, _, _, ph) <- createProcess (proc c as) { std_in = CreatePipe }
+  forM_ mh $ \h -> hSetEncoding h utf8 >> TIO.hPutStr h input >> hClose h
+  waitForProcess ph
+
 -- | Print, log to history, run. True on exit 0.
 runCmd :: [String] -> IO Bool
 runCmd [] = pure True
@@ -169,13 +190,39 @@ runCmd argv = do
     ExitSuccess   -> pure True
     ExitFailure n -> Gum.bad ("exited with status " <> T.pack (show n)) >> pure False
 
--- | Run with some text piped to stdin.
-spawnWithInput :: [String] -> Text -> IO ExitCode
-spawnWithInput [] _ = pure ExitSuccess
-spawnWithInput (c : as) input = do
-  (mh, _, _, ph) <- createProcess (proc c as) { std_in = CreatePipe }
-  forM_ mh $ \h -> hSetEncoding h utf8 >> TIO.hPutStr h input >> hClose h
-  waitForProcess ph
+-- | Like 'runCmd', but quiet: runs under a spinner and shows the output only
+-- if the command fails. Not for interactive commands, since stdin is empty
+-- and stdout/stderr are captured.
+runCmdSpin :: Text -> [String] -> IO Bool
+runCmdSpin _ [] = pure True
+runCmdSpin msg argv = do
+  Gum.dimErr ("$ " <> showCmd argv)
+  record (showCmd argv)
+  r <- withSpinner (Just msg) (readCmd argv)
+  case r of
+    Just (ExitSuccess, _, _) -> pure True
+    Just (ExitFailure n, o, e) -> do
+      Gum.bad ("exited with status " <> T.pack (show n))
+      Gum.pager ("$ " <> showCmd argv <> "\n\n" <> o <> e)
+      pure False
+    Nothing -> Gum.bad "could not start the command" >> pure False
+
+-- | Run a command and show its (stdout+stderr) output in the pager, without logging.
+pagedCmd :: [String] -> IO ()
+pagedCmd argv = pagedCmdWith (Just (spinMsg argv)) argv
+
+pagedCmdWith :: Maybe Text -> [String] -> IO ()
+pagedCmdWith spin argv = withSpinner spin (captureAll argv) >>= Gum.pager
+
+-- | Like 'runCmd' but the output goes to the pager.
+runPaged :: [String] -> IO ()
+runPaged argv = runPagedWith (Just (spinMsg argv)) argv
+
+runPagedWith :: Maybe Text -> [String] -> IO ()
+runPagedWith spin argv = do
+  record (showCmd argv)
+  out <- withSpinner spin (captureAll argv)
+  Gum.pager ("$ " <> showCmd argv <> "\n\n" <> out)
 
 readCmd :: [String] -> IO (Maybe (ExitCode, Text, Text))
 readCmd [] = pure Nothing
@@ -237,17 +284,6 @@ normalizeTarget :: Text -> IO Text
 normalizeTarget t
   | any (`T.isPrefixOf` t) ["/", "."] || "#" `T.isInfixOf` t || ":" `T.isInfixOf` t = pure t
   | otherwise = toRef t
-
--- | Run a command and show its (stdout+stderr) output in the pager, without logging.
-pagedCmd :: [String] -> IO ()
-pagedCmd argv = captureAll argv >>= Gum.pager
-
--- | Like 'runCmd' but the output goes to the pager.
-runPaged :: [String] -> IO ()
-runPaged argv = do
-  record (showCmd argv)
-  out <- captureAll argv
-  Gum.pager ("$ " <> showCmd argv <> "\n\n" <> out)
 
 -- ------------------------------------------------------------ prompts
 

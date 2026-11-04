@@ -28,7 +28,7 @@ menuChannels = menuLoop "Channels & registry"
         forM_ sel (setChannel . ("github:NixOS/nixpkgs/" <>) . itemKey)
         pause
   , opt "Use the registry's nixpkgs (default)" $ setChannel "nixpkgs" >> pause
-  , opt "Use a custom ref…" $ do
+  , opt "Use a custom channel…" $ do
       mv <- askNE "flake ref" "e.g. github:NixOS/nixpkgs/nixos-unstable"
       forM_ mv setChannel
       pause
