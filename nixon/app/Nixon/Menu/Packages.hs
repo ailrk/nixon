@@ -16,21 +16,17 @@ pkgItem p = Item (pkAttr p)
   (padR 34 (pkAttr p) <> " " <> padR 14 (pkVersion p) <> " " <> pkDesc p)
   (Just (T.unwords [pkPname p, pkVersion p] <> "\n\n" <> pkDesc p))
 
--- | Interactive search; returns the selected attribute names.
+-- | Browse every package in a fuzzy list; returns the selected attribute names.
 searchPackages :: IO (Maybe [Text])
 searchPackages = do
-  ch <- getChannel
-  mq <- askNE "🔍 search" ("e.g. ripgrep   (channel: " <> ch <> ")")
-  case mq of
-    Nothing -> pure Nothing
-    Just q -> do
-      pkgs <- Gum.spin ("Searching " <> ch <> " for '" <> q <> "'…") (searchPkgs [q])
-      if null pkgs
-        then warn ("no results for '" <> q <> "'") >> pause >> pure Nothing
-        else do
-          -- result lists can be long → fzf (with preview pane) when available
-          sel <- Gum.pickMany "tab: multi-select · enter: confirm" (map pkgItem pkgs)
-          pure (if null sel then Nothing else Just (map itemKey sel))
+  ch   <- getChannel
+  pkgs <- allPkgs          -- first run per revision builds the index and prints a notice
+  if null pkgs
+    then warn ("could not load packages from " <> ch) >> pause >> pure Nothing
+    else do
+      sel <- Gum.pickMany ("search " <> ch <> " · tab: multi-select · enter: confirm")
+                          (map pkgItem pkgs)
+      pure (if null sel then Nothing else Just (map itemKey sel))
 
 -- | Version history from nixhub; yields a pinned flake installable.
 oldVersionPick :: Text -> IO (Maybe Text)
