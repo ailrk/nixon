@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 -- | @gum spin@: show a spinner while an IO action runs on a worker thread
 -- and hand back its result (exceptions are re-thrown on the caller).
-module Gum.Spin (spin) where
+module Gum.Spin (spin, spinForce) where
 
 import Brick
 import Brick.BChan (newBChan, writeBChan)
@@ -56,3 +56,12 @@ spin title act = do
     Nothing        -> killThread worker >> throwIO UserInterrupt
     Just (Left e)  -> throwIO e
     Just (Right x) -> pure x
+
+-- | 'spin', but also forces a cheap summary of the result (a size or a count)
+-- before the spinner stops. Use it when the action returns lazily built data,
+-- so the work happens under the spinner and not after the next screen opens.
+spinForce :: Text -> (a -> Int) -> IO a -> IO a
+spinForce title measure act = spin title $ do
+  x <- act
+  _ <- evaluate (measure x)
+  pure x

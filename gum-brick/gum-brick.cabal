@@ -10,6 +10,7 @@ library
   ghc-options:      -Wall -Wno-name-shadowing -Wno-unused-do-bind
   exposed-modules:
     Gum
+    Gum.Browser
     Gum.Style
     Gum.List
     Gum.Prompt
@@ -23,6 +24,8 @@ library
     , ansi-terminal      >=1.0
     , base               >=4.16 && <5
     , brick              >=2.3  && <3
+    , containers
+    , microlens
     , directory
     , filepath
     , mtl
