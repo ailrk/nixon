@@ -20,7 +20,7 @@ import Nixon.Nix (human, resolveTarget)
 import Nixon.Core (menuLoop, opt)
 
 menuBrowse :: IO ()
-menuBrowse = menuLoop "Profile"
+menuBrowse = menuLoop "Browse"
   [ opt "Browse dependency tree" menuTree
   , opt "Browse config" menuInspect
   ]
