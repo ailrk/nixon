@@ -12,9 +12,12 @@ executable nixon
   other-modules:
     Nixon.Core
     Nixon.Json
-    Nixon.Nix
     Nixon.Cli
+    Nixon.Nix
+    Nixon.Nix.Inspect
+    Nixon.Nix.Tree
     Nixon.Menu
+    Nixon.Menu.Browse
     Nixon.Menu.Packages
     Nixon.Menu.Profile
     Nixon.Menu.Options
